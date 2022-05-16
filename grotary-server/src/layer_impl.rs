@@ -2,10 +2,28 @@ use custos::{Matrix, GenericOCL, number::Float, cpu::TBlas};
 use gradients::{Linear, SampleUniform, Softmax, ReLU, Param, GetParam};
 
 pub struct Network {
-    layers: Vec<Box<dyn Layer<f32>>>,
+    pub layers: Vec<Box<dyn Layer<f32>>>,
+}
+
+impl Default for Network {
+    fn default() -> Self {
+        Self { layers: Default::default() }
+    }
 }
 
 impl Network {
+    pub fn new() -> Network {
+        Network { layers: Default::default() }
+    }
+
+    pub fn add(&mut self, layer: Box<dyn Layer<f32>>) {
+        self.layers.push(layer);
+    }
+
+    pub fn from_layers(layers: Vec<Box<dyn Layer<f32>>>) -> Network {
+        Network { layers }
+    }
+
     pub fn forward(&mut self, mut inputs: Matrix<f32>) -> Matrix<f32> {
         for layer in &mut self.layers {
             inputs = layer.forw(inputs);
