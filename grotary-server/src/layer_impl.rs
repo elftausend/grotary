@@ -19,6 +19,12 @@ impl Network {
         }
         grad
     }
+    pub fn params(&mut self) -> Vec<Param<f32>> {
+        self.layers
+            .iter_mut()
+            .flat_map(|layer| layer.params())
+            .collect()
+    }
 }
 
 pub trait Layer<T> {
