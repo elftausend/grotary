@@ -13,7 +13,7 @@ fn connect() -> Result<(), std::io::Error> {
     stream.write(&send)?;
     stream.write(&send)?;
     
-    let data = [2; 10000];
+    let data = [2; 28*28*4];
     let mut send = vec![0u8; data.len() + 8];
     send[..8].copy_from_slice(&data.len().to_le_bytes());
     send[8..].copy_from_slice(&data);
@@ -23,7 +23,7 @@ fn connect() -> Result<(), std::io::Error> {
     
     std::thread::sleep(std::time::Duration::from_secs(1));
     
-    for _ in 0..100 {
+    for _ in 0..500 {
         stream.write(&send)?;
 
         //std::thread::sleep(std::time::Duration::from_secs(1));
