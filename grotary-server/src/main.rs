@@ -1,13 +1,16 @@
 mod layer_impl;
 mod convert;
 
-use std::{net::{TcpListener, TcpStream}, io::Read};
+use std::{net::{TcpListener, TcpStream}, io::{Read, Write}};
 use convert::{from_bytes, to_bytes};
 use custos::{Matrix, InternCLDevice, InternCPU, CPU, AsDev, CLDevice};
-use gradients::{Linear, Softmax};
+use gradients::{Linear, Softmax, ReLU};
 use layer_impl::Network;
 
 fn main() -> Result<(), std::io::Error> {
+
+    std::env::set_var("RUST_BACKTRACE", "1");
+
     let listener = TcpListener::bind("127.0.0.1:12000")?;
         
     for stream in listener.incoming() {
@@ -86,18 +89,31 @@ fn handle_packet(packet: &[u8], network: &mut Network, device: &mut RotaryDevice
     match id {
         1 => {
             *device = packet[1].into();
+            *network = Network::from_layers(
+                vec![
+                    Box::new(Linear::new(784, 128)),
+                    Box::new(ReLU::new()),
+                    Box::new(Linear::new(128, 10)),
+                    Box::new(ReLU::new()),
+                    Box::new(Linear::new(10, 10)),
+                    Box::new(Softmax::new()),
+        
+                ]  
+            );
             println!("device: {device:?}");
         }
 
         // receive client data, network forward pass -> send result to client
         2 => {
+            println!("?");
             let forward = from_bytes(&packet[1..]);
-            let features = network.params()[0].weights.rows();
+            let features = 784;
+
             let samples = forward.len() / features;
             let forward = Matrix::from((samples, features, forward));
-            
+            println!("samples: {samples}");
             let output = to_bytes(&network.forward(forward).read());
-
+            stream.write(&output).unwrap();
             
         }
         _ => {}
