@@ -1,7 +1,9 @@
 mod layer_impl;
+mod convert;
 
 use std::{net::{TcpListener, TcpStream}, io::Read};
-
+use convert::{from_bytes, to_bytes};
+use custos::{Matrix, InternCLDevice, InternCPU, CPU, AsDev, CLDevice};
 use gradients::{Linear, Softmax};
 use layer_impl::Network;
 
@@ -19,9 +21,12 @@ fn main() -> Result<(), std::io::Error> {
 
 
 fn handle_client(mut stream: TcpStream) {
+    let mut device: RotaryDevice = Default::default();
+
+    let mut network = Network::new();
+
     let mut data = [0; 5000000];
             
-    //let mut network = Network::new();
     let mut bytes_to_read = 0;
     let mut old_data = Vec::new();
 
@@ -32,7 +37,7 @@ fn handle_client(mut stream: TcpStream) {
                 if n == 0 {
                     break
                 }
-                println!("read {n} bytes");
+                //println!("read {n} bytes");
                 let mut start = 0;
     
                 while start < n {
@@ -45,7 +50,7 @@ fn handle_client(mut stream: TcpStream) {
                         start = bytes_to_read;
                         bytes_to_read = 0;
 
-                        handle_packet(&packet);
+                        handle_packet(&packet, &mut network, &mut device, &mut stream);
 
                     } else {
                         bytes = u64::from_le_bytes(data[start..start+8].try_into().unwrap());
@@ -60,12 +65,12 @@ fn handle_client(mut stream: TcpStream) {
                         }
                         //println!("packet len: {bytes}");
                         let packet = &data[start+8..bytes as usize + start+8];
-                        handle_packet(packet);
+                        handle_packet(packet, &mut network, &mut device, &mut stream);
                         start = bound;
                     }
                     
                 }
-                println!("start: {start}, read_bytes: {n}");
+                //println!("start: {start}, read_bytes: {n}");
                 
             },
             Err(e) => {
@@ -76,15 +81,53 @@ fn handle_client(mut stream: TcpStream) {
     }       
 }           
 
-fn handle_packet(packet: &[u8]) {
+fn handle_packet(packet: &[u8], network: &mut Network, device: &mut RotaryDevice, stream: &mut TcpStream) {
     let id = packet[0];
     match id {
         1 => {
-            println!("1 id");
+            *device = packet[1].into();
+            println!("device: {device:?}");
         }
+
+        // receive client data, network forward pass -> send result to client
         2 => {
-            println!("2 id");
+            let forward = from_bytes(&packet[1..]);
+            let features = network.params()[0].weights.rows();
+            let samples = forward.len() / features;
+            let forward = Matrix::from((samples, features, forward));
+            
+            let output = to_bytes(&network.forward(forward).read());
+
+            
         }
         _ => {}
     }        
+}
+
+#[allow(dead_code)]
+#[derive(Debug)]
+struct RotaryDevice {
+    cpu: Option<InternCPU>,
+    opencl: Option<InternCLDevice>
+}
+
+impl Default for RotaryDevice {
+    fn default() -> Self {
+        Self { cpu: None, opencl: None }
+    }
+}
+
+
+impl From<u8> for RotaryDevice {
+    fn from(id: u8) -> Self {
+        println!("id: {id}");
+        if id == 0 {
+            RotaryDevice {cpu: Some(CPU::new().select()), opencl: None }
+        } else {
+            RotaryDevice {
+                cpu: None, 
+                opencl: Some(CLDevice::get(id as usize-1).unwrap().select()) 
+            }
+        }
+    }
 }
