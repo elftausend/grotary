@@ -1,9 +1,9 @@
 mod layer_impl;
 mod convert;
 
-use std::{net::{TcpListener, TcpStream}, io::{Read, Write}};
+use std::{net::{TcpListener, TcpStream}, io::{Read, Write}, ffi::c_void};
 use convert::{from_bytes, to_bytes};
-use custos::{Matrix, InternCLDevice, InternCPU, CPU, AsDev, CLDevice};
+use custos::{Matrix, InternCLDevice, InternCPU, CPU, AsDev, CLDevice, set_count, opencl::api::release_mem_object};
 use gradients::{Linear, Softmax, ReLU};
 use layer_impl::Network;
 
@@ -105,14 +105,30 @@ fn handle_packet(packet: &[u8], network: &mut Network, device: &mut RotaryDevice
 
         // receive client data, network forward pass -> send result to client
         2 => {
-            println!("?");
             let forward = from_bytes(&packet[1..]);
             let features = 784;
 
             let samples = forward.len() / features;
             let forward = Matrix::from((samples, features, forward));
-            println!("samples: {samples}");
-            let output = to_bytes(&network.forward(forward).read());
+
+            let data = vec![3.; 10];
+            let output = to_bytes(&data);
+            //let output = to_bytes(&network.forward(forward).read());
+            set_count(0);
+            
+            unsafe {
+                match &mut device.opencl {
+                    Some(cl) => {
+                        release_mem_object(forward.ptr() as *mut c_void).unwrap();
+                        cl.cl.borrow_mut().ptrs.remove(6);
+                    },
+                    None => {
+                        Box::from_raw(forward.ptr());
+                        device.cpu.as_mut().unwrap().cpu.borrow_mut().ptrs.remove(6);
+                    }
+                }
+            }
+            
             stream.write(&output).unwrap();
             
         }
