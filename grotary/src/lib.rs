@@ -25,10 +25,10 @@ fn connect() -> Result<(), std::io::Error> {
 
     let mut send = vec![0u8; 8 + 2];
     send[..8].copy_from_slice(&2u64.to_le_bytes());
-    send[8..].copy_from_slice(&[1, 1]);
+    send[8..].copy_from_slice(&[1, 0]);
     stream.write(&send)?;
 
-    for _ in 0..100000 {
+    for _ in 0..10000000 {
         let mut send = (28*28*4u64+1).to_le_bytes().to_vec();
         send.extend(vec![2]);
         send.extend(to_bytes(&[0.241f32; 28*28]));
@@ -40,7 +40,7 @@ fn connect() -> Result<(), std::io::Error> {
     
         let result = from_bytes(&recv);
         //println!("result: {result:?}");    
-        //std::thread::sleep(std::time::Duration::from_secs(1));
+        std::thread::sleep(std::time::Duration::from_millis(1));
     }
     
     

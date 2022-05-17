@@ -111,20 +111,31 @@ fn handle_packet(packet: &[u8], network: &mut Network, device: &mut RotaryDevice
             let samples = forward.len() / features;
             let forward = Matrix::from((samples, features, forward));
 
-            let data = vec![3.; 10];
-            let output = to_bytes(&data);
-            //let output = to_bytes(&network.forward(forward).read());
+            let output = to_bytes(&network.forward(forward).read());
             set_count(0);
             
             unsafe {
                 match &mut device.opencl {
                     Some(cl) => {
+                        let ptrs = &mut cl.cl.borrow_mut().ptrs;
+                        for (idx, ptr) in ptrs.iter_mut().enumerate() {
+                            if *ptr == forward.ptr() as *mut c_void {
+                                ptrs.remove(idx);
+                                break;
+                            }
+                        }
                         release_mem_object(forward.ptr() as *mut c_void).unwrap();
-                        cl.cl.borrow_mut().ptrs.remove(6);
+
                     },
                     None => {
+                        let ptrs = &mut device.cpu.as_mut().unwrap().cpu.borrow_mut().ptrs;
+                        for (idx, ptr) in ptrs.iter_mut().enumerate() {
+                            if *ptr == forward.ptr() as *mut usize {
+                                ptrs.remove(idx);
+                                break;
+                            }
+                        }
                         Box::from_raw(forward.ptr());
-                        device.cpu.as_mut().unwrap().cpu.borrow_mut().ptrs.remove(6);
                     }
                 }
             }
