@@ -1,9 +1,12 @@
 mod layer_impl;
 mod convert;
+mod device;
 
-use std::{net::{TcpListener, TcpStream}, io::{Read, Write}, ffi::c_void};
+use std::{net::{TcpListener, TcpStream}, io::{Read, Write}};
 use convert::{from_bytes, to_bytes};
-use custos::{Matrix, InternCLDevice, InternCPU, CPU, AsDev, CLDevice, set_count, opencl::api::release_mem_object};
+
+use custos::{Matrix, set_count, Device};
+use device::RotaryDevice;
 use gradients::{Linear, Softmax, ReLU};
 use layer_impl::Network;
 
@@ -113,61 +116,17 @@ fn handle_packet(packet: &[u8], network: &mut Network, device: &mut RotaryDevice
             let output = to_bytes(&network.forward(forward).read());
             set_count(0);
             
-            unsafe {
-                match &mut device.opencl {
-                    Some(cl) => {
-                        let ptrs = &mut cl.cl.borrow_mut().ptrs;
-                        for (idx, ptr) in ptrs.iter_mut().enumerate() {
-                            if *ptr == forward.ptr() as *mut c_void {
-                                ptrs.remove(idx);
-                                break;
-                            }
-                        }
-                        release_mem_object(forward.ptr() as *mut c_void).unwrap();
-
-                    },
-                    None => {
-                        let ptrs = &mut device.cpu.as_mut().unwrap().cpu.borrow_mut().ptrs;
-                        for (idx, ptr) in ptrs.iter_mut().enumerate() {
-                            if *ptr == forward.ptr() as *mut usize {
-                                ptrs.remove(idx);
-                                break;
-                            }
-                        }
-                        Box::from_raw(forward.ptr());
-                    }
+            match &mut device.opencl {
+                Some(cl) => {
+                    cl.drop(forward.to_buf());
+                },
+                None => {
+                    device.cpu.as_mut().unwrap().drop(forward.to_buf());
                 }
-            }            
+            }
+    
             stream.write_all(&output).unwrap();            
         }
         _ => {}
     }        
-}
-
-#[allow(dead_code)]
-#[derive(Debug)]
-struct RotaryDevice {
-    cpu: Option<InternCPU>,
-    opencl: Option<InternCLDevice>
-}
-
-impl Default for RotaryDevice {
-    fn default() -> Self {
-        Self { cpu: None, opencl: None }
-    }
-}
-
-
-impl From<u8> for RotaryDevice {
-    fn from(id: u8) -> Self {
-        println!("id: {id}");
-        if id == 0 {
-            RotaryDevice {cpu: Some(CPU::new().select()), opencl: None }
-        } else {
-            RotaryDevice {
-                cpu: None, 
-                opencl: Some(CLDevice::get(id as usize-1).unwrap().select()) 
-            }
-        }
-    }
 }
