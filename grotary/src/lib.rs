@@ -1,26 +1,39 @@
-use std::{net::TcpStream, io::{Write, Read}};
+mod convert;
+mod device;
 
-pub fn to_bytes(data: &[f32]) -> Vec<u8> {
-    let mut bytes = vec![0; data.len() * 4];
+pub use convert::*;
+use device::Device;
 
-    for (idx, value) in data.iter().enumerate() {
-        let start = idx * 4;
-        bytes[start..start+4].copy_from_slice(&value.to_le_bytes())
-    }
-    bytes
-}
+use std::{net::TcpStream, io::{Write, Read}, time::Instant};
 
-pub fn from_bytes(buf: &[u8]) -> Vec<f32> {
-    let mut data = vec![0.; buf.len() / 4];
-
-    for i in 0..data.len() {
-        data[i] = f32::from_le_bytes(buf[i*4..i*4+4].try_into().unwrap());
-    }
-    data
+#[test]
+fn connect_with_device() -> Result<(), std::io::Error> {
+    let device = Device::new(0, "127.0.0.1:12000")?;
+    //device.run(data, recv);
+    Ok(())
 }
 
 #[test]
 fn connect() -> Result<(), std::io::Error> {
+
+    /*
+    const TIMES: usize = 10000;
+
+    let mut s = 0;
+
+    let before = Instant::now();
+    for _ in 0..TIMES {
+        let mut send = (28*28*4u64+1).to_le_bytes().to_vec();
+        send.extend(vec![2]);
+        send.extend(to_bytes(&[0.241f32; 28*28]));
+        s += send[0];
+    }
+    let after = Instant::now();
+    println!("s: {s} duration: {:?}", (after-before) / TIMES as u32);
+    */
+
+
+    /* 
     let mut stream = TcpStream::connect("127.0.0.1:12000")?;
 
     let mut send = vec![0u8; 8 + 2];
@@ -40,7 +53,7 @@ fn connect() -> Result<(), std::io::Error> {
     
         let result = from_bytes(&recv);
         //println!("result: {result:?}");    
-        std::thread::sleep(std::time::Duration::from_millis(1));
+        //std::thread::sleep(std::time::Duration::from_millis(1));
     }
     
     
@@ -70,6 +83,6 @@ fn connect() -> Result<(), std::io::Error> {
         //std::thread::sleep(std::time::Duration::from_secs(1));
     }
     */
-    
+    */
     Ok(())
 }

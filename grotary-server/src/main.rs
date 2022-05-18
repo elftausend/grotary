@@ -8,7 +8,6 @@ use gradients::{Linear, Softmax, ReLU};
 use layer_impl::Network;
 
 fn main() -> Result<(), std::io::Error> {
-
     std::env::set_var("RUST_BACKTRACE", "1");
 
     let listener = TcpListener::bind("127.0.0.1:12000")?;
@@ -138,10 +137,8 @@ fn handle_packet(packet: &[u8], network: &mut Network, device: &mut RotaryDevice
                         Box::from_raw(forward.ptr());
                     }
                 }
-            }
-            
-            stream.write(&output).unwrap();
-            
+            }            
+            stream.write_all(&output).unwrap();            
         }
         _ => {}
     }        
