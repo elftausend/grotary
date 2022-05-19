@@ -1,6 +1,6 @@
 use std::{net::{TcpListener, ToSocketAddrs, TcpStream}, io::{Write, Read}};
 
-use custos::{Device, set_count, Matrix};
+use custos::{Device, set_count, Matrix, opencl::api::OCLErrorKind};
 use gradients::{Linear, ReLU, Softmax};
 
 use crate::{layer_impl::Network, device::RotaryDevice, convert::{to_bytes, from_bytes}};
@@ -87,18 +87,31 @@ fn handle_packet(packet: &[u8], network: &mut Network, device: &mut RotaryDevice
     match id {
         1 => {
             //*device = packet[1].into();
-            *device = RotaryDevice::new(packet[1]).unwrap();
-            *network = Network::from_layers(
-                vec![
-                    Box::new(Linear::new(784, 128)),
-                    Box::new(ReLU::new()),
-                    Box::new(Linear::new(128, 10)),
-                    Box::new(ReLU::new()),
-                    Box::new(Linear::new(10, 10)),
-                    Box::new(Softmax::new()),
-        
-                ]  
-            );
+            let mut success = 1;
+            match RotaryDevice::new(packet[1]) {
+                Ok(dev) => *device = dev,
+                Err(e) => {
+                    if e.kind() == Some(&OCLErrorKind::InvalidDeviceIdx) {
+                        success = 0;                 
+                    }
+                },
+            }
+            //*device = RotaryDevice::new(packet[1]).unwrap();
+            if success == 1 {
+                *network = Network::from_layers(
+                    vec![
+                        Box::new(Linear::new(784, 128)),
+                        Box::new(ReLU::new()),
+                        Box::new(Linear::new(128, 10)),
+                        Box::new(ReLU::new()),
+                        Box::new(Linear::new(10, 10)),
+                        Box::new(Softmax::new()),
+            
+                    ]  
+                );
+            } 
+            
+            stream.write_all(&[success]).unwrap();
             println!("device: {device:?}");
         }
 

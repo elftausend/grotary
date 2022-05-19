@@ -14,7 +14,7 @@ impl Default for RotaryDevice {
 }
 
 impl RotaryDevice {
-    pub fn new(id: u8) -> Result<RotaryDevice, Box<dyn std::error::Error>> {
+    pub fn new(id: u8) -> Result<RotaryDevice, custos::Error> {
         if id == 0 {
             Ok(RotaryDevice {cpu: Some(CPU::new().select()), opencl: None })
         } else {
