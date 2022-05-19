@@ -5,15 +5,27 @@ use grotary::{Device, to_bytes, from_bytes};
 #[test]
 fn connect_with_device() -> Result<(), std::io::Error> {
     let mut device = Device::new(0, "127.0.0.1:12000")?;
-    let data = &[0.4312;28*28];
+
+    let data = &[0.4312; 28*28];
     let recv = &mut [0.; 10];
     
-    for _ in 0..10 {
+    device.run(data, recv)?;
+
+    Ok(())
+}
+
+#[test]
+fn connect_with_device_for() -> Result<(), std::io::Error> {
+    let mut device = Device::new(2, "127.0.0.1:12000")?;
+
+    let data = &[0.4312; 28*28];
+    let recv = &mut [0.; 10];
+    
+    for _ in 0..1000 {
         device.run(data, recv)?;
-        println!("recv: {recv:?}");
-        std::thread::sleep(std::time::Duration::from_millis(70));
     }
     
+
     Ok(())
 }
 
