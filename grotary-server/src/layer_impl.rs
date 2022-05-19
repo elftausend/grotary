@@ -1,15 +1,11 @@
 use custos::{Matrix, GenericOCL, number::Float, cpu::TBlas};
 use gradients::{Linear, SampleUniform, Softmax, ReLU, Param, GetParam};
 
+#[derive(Default)]
 pub struct Network {
     pub layers: Vec<Box<dyn Layer<f32>>>,
 }
 
-impl Default for Network {
-    fn default() -> Self {
-        Self { layers: Default::default() }
-    }
-}
 
 impl Network {
     pub fn new() -> Network {

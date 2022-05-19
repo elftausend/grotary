@@ -38,7 +38,7 @@ fn handle_client(mut stream: TcpStream) {
                 if n == 0 {
                     break
                 }
-                //println!("read {n} bytes");
+
                 let mut start = 0;
     
                 while start < n {
@@ -61,10 +61,9 @@ fn handle_client(mut stream: TcpStream) {
                         if bound > n {
                             bytes_to_read = bound - n;
                             old_data = data[start+8..bytes as usize + start+8].to_vec();
-                            println!("next packet: partially empty, bytes to read: {}", bytes_to_read);
 
                         }
-                        //println!("packet len: {bytes}");
+
                         let packet = &data[start+8..bytes as usize + start+8];
                         handle_packet(packet, &mut network, &mut device, &mut stream);
                         start = bound;
@@ -96,7 +95,7 @@ fn handle_packet(packet: &[u8], network: &mut Network, device: &mut RotaryDevice
                     }
                 },
             }
-            //*device = RotaryDevice::new(packet[1]).unwrap();
+
             if success == 1 {
                 *network = Network::from_layers(
                     vec![
@@ -110,9 +109,7 @@ fn handle_packet(packet: &[u8], network: &mut Network, device: &mut RotaryDevice
                     ]  
                 );
             } 
-            
             stream.write_all(&[success]).unwrap();
-            println!("device: {device:?}");
         }
 
         // receive client data, network forward pass -> send result to client

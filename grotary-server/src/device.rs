@@ -1,16 +1,10 @@
 use custos::{InternCPU, InternCLDevice, CLDevice, CPU, AsDev};
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct RotaryDevice {
     pub cpu: Option<InternCPU>,
     pub opencl: Option<InternCLDevice>
-}
-
-impl Default for RotaryDevice {
-    fn default() -> Self {
-        Self { cpu: None, opencl: None }
-    }
 }
 
 impl RotaryDevice {

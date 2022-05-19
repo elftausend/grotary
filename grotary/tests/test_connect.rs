@@ -31,7 +31,9 @@ fn connect_with_device_for() -> Result<(), Box<dyn std::error::Error>> {
 #[test]
 fn test_invalid_id() -> Result<(), Box<dyn std::error::Error>> {
     match Device::new(255, "127.0.0.1:12000") {
-        Ok(_) => {},
+        Ok(_) => {
+            panic!("should not find device");    
+        },
         Err(e) => {
             if e.to_string() != "DeviceIDError" {
                 panic!("should not find device");
@@ -39,14 +41,7 @@ fn test_invalid_id() -> Result<(), Box<dyn std::error::Error>> {
         },
     }
 
-    /* 
-    let data = &[0.4312; 28*28];
-    let recv = &mut [0.; 10];
     
-    for _ in 0..1000 {
-        device.run(data, recv)?;
-    }
-    */
     Ok(())
 }
 

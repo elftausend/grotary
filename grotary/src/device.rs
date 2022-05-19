@@ -21,7 +21,6 @@ impl Device {
         if success[0] == 0 {
             return Err(Box::new(DeviceIDError));
         }
-        println!("success: {success:?}");
 
         Ok(Device {
             stream
