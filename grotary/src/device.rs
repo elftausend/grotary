@@ -34,7 +34,7 @@ impl Device {
         
         self.stream.write_all(&send)?;
 
-        let mut bytes_recv = [0; 10*4];
+        let mut bytes_recv = vec![0; recv.len() * 4];
         self.stream.read_exact(&mut bytes_recv)?;
         from_bytes(&bytes_recv, recv);
         Ok(())
