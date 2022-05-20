@@ -19,13 +19,13 @@ fn main() -> Result<(), std::io::Error> {
 }
 ```
 
-# Client
+## [Client]
+[Client]: https://github.com/elftausend/grotary/tree/main/grotary
 
 ```rust
-use grotary::{Device, to_bytes, from_bytes};
+use grotary::Device;
 
-#[test]
-fn connect_with_device() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut device = Device::new(0, "127.0.0.1:12000")?;
 
     let data = &[0.4312; 28*28];
