@@ -1,4 +1,4 @@
-use custos::{InternCPU, InternCLDevice, CLDevice, CPU, AsDev};
+use custos::{InternCPU, InternCLDevice, CLDevice, CPU, AsDev, Buffer, Device};
 
 #[allow(dead_code)]
 #[derive(Debug, Default)]
@@ -16,6 +16,16 @@ impl RotaryDevice {
                 cpu: None, 
                 opencl: Some(CLDevice::get(id as usize-1)?.select()) 
             })
+        }
+    }
+    pub fn drop_buf<T: Default+Copy>(&mut self, buffer: Buffer<T>) {
+        match &mut self.opencl {
+            Some(cl) => {
+                cl.drop(buffer);
+            },
+            None => {
+                self.cpu.as_mut().unwrap().drop(buffer);
+            }
         }
     }
 }

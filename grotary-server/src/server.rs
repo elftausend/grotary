@@ -1,6 +1,6 @@
 use std::{net::{TcpListener, ToSocketAddrs, TcpStream}, io::{Write, Read}};
 
-use custos::{Device, set_count, Matrix, opencl::api::OCLErrorKind};
+use custos::{set_count, Matrix, opencl::api::OCLErrorKind};
 use gradients::{Linear, ReLU, Softmax};
 
 use crate::{layer_impl::Network, device::RotaryDevice, convert::{to_bytes, from_bytes}};
@@ -123,14 +123,7 @@ fn handle_packet(packet: &[u8], network: &mut Network, device: &mut RotaryDevice
             let output = to_bytes(&network.forward(forward).read());
             set_count(0);
             
-            match &mut device.opencl {
-                Some(cl) => {
-                    cl.drop(forward.to_buf());
-                },
-                None => {
-                    device.cpu.as_mut().unwrap().drop(forward.to_buf());
-                }
-            }
+            device.drop_buf(forward.to_buf());
     
             stream.write_all(&output).unwrap();            
         }
