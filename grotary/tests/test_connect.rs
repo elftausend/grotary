@@ -10,7 +10,6 @@ fn connect_with_device() -> Result<(), Box<dyn std::error::Error>> {
     let recv = &mut [0.; 10];
     
     device.run(data, recv)?;
-
     Ok(())
 }
 
