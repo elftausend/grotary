@@ -28,6 +28,7 @@ impl RotaryDevice {
             }
         }
     }
+    
 }
 
 

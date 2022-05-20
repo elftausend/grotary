@@ -1,30 +1,29 @@
 use std::{net::{TcpListener, ToSocketAddrs, TcpStream}, io::{Write, Read}};
 
-use custos::{set_count, Matrix, opencl::api::OCLErrorKind};
-use gradients::{Linear, ReLU, Softmax};
+use custos::opencl::api::OCLErrorKind;
 
-use crate::{layer_impl::Network, device::RotaryDevice, convert::{to_bytes, from_bytes}};
+use crate::{device::RotaryDevice, convert::{to_bytes, from_bytes}};
 
 pub struct RotaryServer;
 
 impl RotaryServer {
-    pub fn bind<A: ToSocketAddrs>(addr: A) -> Result<(), std::io::Error> {
+    pub fn bind<A: ToSocketAddrs, F: Fn(Vec<f32>) -> Vec<f32> + Copy>(addr: A, exec: F) -> Result<(), std::io::Error> {
         let listener = TcpListener::bind(addr)?;
         
         for stream in listener.incoming() {
             match stream {
-                Ok(stream) => handle_client(stream),
+                Ok(stream) => handle_client(stream, exec),
                 Err(e) => panic!("encountered IO error: {}", e),
             }
         }
         Ok(())
     }
+
+    
 }
 
-fn handle_client(mut stream: TcpStream) {
+fn handle_client<F: Fn(Vec<f32>) -> Vec<f32> + Copy>(mut stream: TcpStream, exec: F) {
     let mut device: RotaryDevice = Default::default();
-
-    let mut network = Network::new();
 
     let mut data = [0; 5000000];
             
@@ -51,7 +50,7 @@ fn handle_client(mut stream: TcpStream) {
                         start = bytes_to_read;
                         bytes_to_read = 0;
 
-                        handle_packet(&packet, &mut network, &mut device, &mut stream);
+                        handle_packet(&packet, &mut device, &mut stream, exec);
 
                     } else {
                         bytes = u64::from_le_bytes(data[start..start+8].try_into().unwrap());
@@ -65,7 +64,7 @@ fn handle_client(mut stream: TcpStream) {
                         }
 
                         let packet = &data[start+8..bytes as usize + start+8];
-                        handle_packet(packet, &mut network, &mut device, &mut stream);
+                        handle_packet(packet, &mut device, &mut stream, exec);
                         start = bound;
                     }
                     
@@ -81,7 +80,12 @@ fn handle_client(mut stream: TcpStream) {
     }       
 }   
 
-fn handle_packet(packet: &[u8], network: &mut Network, device: &mut RotaryDevice, stream: &mut TcpStream) {
+fn handle_packet<F: Fn(Vec<f32>) -> Vec<f32>>(
+    packet: &[u8], 
+    device: &mut RotaryDevice, 
+    stream: &mut TcpStream,
+    exec: F,
+) {
     let id = packet[0];
     match id {
         1 => {
@@ -96,6 +100,7 @@ fn handle_packet(packet: &[u8], network: &mut Network, device: &mut RotaryDevice
                 },
             }
 
+            /* 
             if success == 1 {
                 *network = Network::from_layers(
                     vec![
@@ -108,12 +113,18 @@ fn handle_packet(packet: &[u8], network: &mut Network, device: &mut RotaryDevice
             
                     ]  
                 );
-            } 
+            }
+            */ 
             stream.write_all(&[success]).unwrap();
         }
 
         // receive client data, network forward pass -> send result to client
         2 => {
+
+            let process = from_bytes(&packet[1..]);
+            let output = to_bytes(&exec(process));
+
+            /* 
             let forward = from_bytes(&packet[1..]);
             let features = 784;
 
@@ -124,6 +135,7 @@ fn handle_packet(packet: &[u8], network: &mut Network, device: &mut RotaryDevice
             set_count(0);
             
             device.drop_buf(forward.to_buf());
+            */
     
             stream.write_all(&output).unwrap();            
         }
