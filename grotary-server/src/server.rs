@@ -25,7 +25,7 @@ impl RotaryServer {
 fn handle_client<F: Fn(Vec<f32>) -> Vec<f32> + Copy>(mut stream: TcpStream, exec: F) {
     let mut device: RotaryDevice = Default::default();
 
-    let mut data = [0; 5000000];
+    let mut data = vec![0; 5000000];
             
     let mut bytes_to_read = 0;
     let mut old_data = Vec::new();

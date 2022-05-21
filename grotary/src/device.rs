@@ -1,5 +1,4 @@
 use std::{net::{TcpStream, ToSocketAddrs}, io::{Write, Read}};
-
 use crate::{to_bytes, from_bytes, DeviceIDError};
 
 pub struct Device {
