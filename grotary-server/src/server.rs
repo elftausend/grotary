@@ -4,10 +4,42 @@ use custos::opencl::api::OCLErrorKind;
 
 use crate::{device::RotaryDevice, convert::{to_bytes, from_bytes}};
 
-pub struct RotaryServer;
+pub struct RotaryServer<A: ToSocketAddrs, E: FnMut(Vec<f32>) -> Vec<f32>> {
+    addr: A,
+    init: Option<Box<dyn FnMut()>>,
+    exec: Option<E>
+}
 
-impl RotaryServer {
-    pub fn bind<A: ToSocketAddrs, F: Fn(Vec<f32>) -> Vec<f32> + Copy>(addr: A, exec: F) -> Result<(), std::io::Error> {
+impl<A: ToSocketAddrs, E: FnMut(Vec<f32>) -> Vec<f32>> RotaryServer<A, E> {
+    pub fn new(addr: A) -> Self {
+        RotaryServer {
+            addr,
+            init: None,
+            exec: None,
+        }
+    }
+    pub fn init<F: FnMut() + 'static>(mut self, f: F) -> Self{
+        self.init = Some(Box::new(f));
+        self
+    }
+    pub fn exec(mut self, f: E) -> Self {
+        self.exec = Some(f);
+        self
+    }
+
+    pub fn bind(mut self) -> std::io::Result<()> {
+        let listener = TcpListener::bind(self.addr)?;
+        
+        for stream in listener.incoming() {
+            match stream {
+                Ok(stream) => handle_client(stream, self.exec.as_mut().expect("provide exec()"), self.init.as_mut()),
+                Err(e) => panic!("encountered IO error: {}", e),
+            }
+        }
+        Ok(())
+    }
+    /* 
+    pub fn bind1<F: Fn(Vec<f32>) -> Vec<f32> + Copy>(addr: A, exec: F) -> Result<(), std::io::Error> {
         let listener = TcpListener::bind(addr)?;
         
         for stream in listener.incoming() {
@@ -17,12 +49,12 @@ impl RotaryServer {
             }
         }
         Ok(())
-    }
+    }*/
 
     
 }
 
-fn handle_client<F: Fn(Vec<f32>) -> Vec<f32> + Copy>(mut stream: TcpStream, exec: F) {
+fn handle_client<F: FnMut(Vec<f32>) -> Vec<f32>>(mut stream: TcpStream, exec: &mut F, mut init: Option<&mut Box<dyn FnMut()>>) {
     let mut device: RotaryDevice = Default::default();
 
     let mut data = vec![0; 5000000];
@@ -50,7 +82,7 @@ fn handle_client<F: Fn(Vec<f32>) -> Vec<f32> + Copy>(mut stream: TcpStream, exec
                         start = bytes_to_read;
                         bytes_to_read = 0;
 
-                        handle_packet(&packet, &mut device, &mut stream, exec);
+                        handle_packet(&packet, &mut device, &mut stream, exec, &mut init);
 
                     } else {
                         bytes = u64::from_le_bytes(data[start..start+8].try_into().unwrap());
@@ -64,7 +96,7 @@ fn handle_client<F: Fn(Vec<f32>) -> Vec<f32> + Copy>(mut stream: TcpStream, exec
                         }
 
                         let packet = &data[start+8..bytes as usize + start+8];
-                        handle_packet(packet, &mut device, &mut stream, exec);
+                        handle_packet(packet, &mut device, &mut stream, exec, &mut init);
                         start = bound;
                     }
                     
@@ -80,11 +112,12 @@ fn handle_client<F: Fn(Vec<f32>) -> Vec<f32> + Copy>(mut stream: TcpStream, exec
     }       
 }   
 
-fn handle_packet<F: Fn(Vec<f32>) -> Vec<f32>>(
+fn handle_packet<F: FnMut(Vec<f32>) -> Vec<f32>>(
     packet: &[u8], 
     device: &mut RotaryDevice, 
     stream: &mut TcpStream,
-    exec: F,
+    exec: &mut F,
+    init: &mut Option<&mut Box<dyn FnMut()>>
 ) {
     let id = packet[0];
     match id {
@@ -92,7 +125,12 @@ fn handle_packet<F: Fn(Vec<f32>) -> Vec<f32>>(
             //*device = packet[1].into();
             let mut success = 1;
             match RotaryDevice::new(packet[1]) {
-                Ok(dev) => *device = dev,
+                Ok(dev) => {
+                    *device = dev;
+                    if let Some(init) = init {
+                        init()
+                    }
+                },
                 Err(e) => {
                     if e.kind() == Some(&OCLErrorKind::InvalidDeviceIdx) {
                         success = 0;                 

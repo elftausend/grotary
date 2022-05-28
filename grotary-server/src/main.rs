@@ -1,4 +1,4 @@
-use custos::{CPU, AsDev};
+use custos::{CPU, AsDev, Matrix, set_count};
 use gradients::{Linear, ReLU, Softmax};
 use grotary_server::{RotaryServer, Network};
 
@@ -14,19 +14,44 @@ fn main() -> Result<(), std::io::Error> {
 }
 */
 fn main() -> Result<(), std::io::Error> {
+    let mut a = 0;
 
-    let _device = CPU::new().select();
-    let _net = Network::from_layers(
-        vec![
-            Box::new(Linear::new(784, 128)),
-            Box::new(ReLU::new()),
-            Box::new(Linear::new(128, 10)),
-            Box::new(ReLU::new()),
-            Box::new(Linear::new(10, 10)),
-            Box::new(Softmax::new()),
-        ]  
-    );
-    RotaryServer::bind("127.0.0.1:12000", move |x| {
+
+    let mut net = Network::default();
+    RotaryServer::new("127.0.0.1:12000")
+        .init(move ||  {
+            a = 3;
+            /* 
+            net = Network::from_layers(
+                vec![
+                    Box::new(Linear::new(784, 128)),
+                    Box::new(ReLU::new()),
+                    Box::new(Linear::new(128, 10)),
+                    Box::new(ReLU::new()),
+                    Box::new(Linear::new(10, 10)),
+                    Box::new(Softmax::new()),
+                ]);
+                */
+        })
+        .exec(|x| {
+
+            a = 3;
+
+            let features = 784;
+        
+            let samples = x.len() / features;
+            let forward = Matrix::from((samples, features, x.clone()));
+
+            net.forward(forward);
+            set_count(0);
+            
+            //device.drop(forward.to_buf());
+            x
+        })
+        .bind()?;
+
+
+    /*RotaryServer::bind("127.0.0.1:12000", move |x| {
         /*
         let features = 784;
         
@@ -40,7 +65,7 @@ fn main() -> Result<(), std::io::Error> {
         forward.read()
         */
         x
-    })?;
+    })?;*/
     
     Ok(())
 }
